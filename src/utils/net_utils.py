@@ -5,7 +5,7 @@ import torchvision
 import torch.nn as nn
 from sty import fg, ef, rs, bg
 import os
-import src.ML_framework.framework_utils as framework_utils
+import src.utils.misc as utils
 
 def get_layer_from_depth_str(all_layers, depth_layer):
     if depth_layer == 'early':
@@ -125,7 +125,7 @@ def prepare_network(net, config, train=True):
     net.cuda() if config.use_cuda else None
     cudnn.benchmark = True
     net.train() if train else net.eval()
-    framework_utils.print_net_info(net) if config.verbose else None
+    utils.print_net_info(net) if config.verbose else None
 
 
 

@@ -104,15 +104,15 @@ def generate_linearity_in_folder(name_folder, n):
 # shutil.rmtree(folder) if os.path.exists(folder) else None
 # generate_orientation_in_folder(folder + '/train', N_train)
 # generate_orientation_in_folder(folder + '/test', N_test)
-#
-#
-# folder = './data/learning_EFs_dataset/proximity'
-# shutil.rmtree(folder) if os.path.exists(folder) else None
-# generate_proximity_in_folder(folder + '/train', N_train)
-# generate_proximity_in_folder(folder + '/test', N_test)
-#
 
-folder = './data/learning_EFs_dataset/linearity'
+
+folder = './data/learning_EFs_dataset/proximity'
 shutil.rmtree(folder) if os.path.exists(folder) else None
-generate_linearity_in_folder(folder + '/train', N_train)
-generate_linearity_in_folder(folder + '/test', N_test)
+generate_proximity_in_folder(folder + '/train', N_train)
+generate_proximity_in_folder(folder + '/test', N_test)
+
+
+# folder = './data/learning_EFs_dataset/linearity'
+# shutil.rmtree(folder) if os.path.exists(folder) else None
+# generate_linearity_in_folder(folder + '/train', N_train)
+# generate_linearity_in_folder(folder + '/test', N_test)

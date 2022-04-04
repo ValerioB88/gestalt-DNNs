@@ -7,6 +7,8 @@ import torch
 import matplotlib.pyplot as plt
 from sty import fg, bg, ef, rs
 from torchvision.transforms import transforms
+
+
 class RandomBackground(torch.nn.Module):
     def __init__(self, color_to_randomize=0):
         super().__init__()
@@ -44,9 +46,6 @@ def conver_tensor_to_plot(tensor, mean, std):
 
 
 def print_net_info(net):
-    """
-    Get net must be reimplemented for any non abstract base class. It returns the network and the parameters to be updated during training
-    """
     num_trainable_params = 0
     tmp = ''
     print(fg.yellow)
@@ -65,71 +64,8 @@ def print_net_info(net):
     print()
 
 
-
 def make_cuda(fun, is_cuda):
     return fun.cuda() if is_cuda else fun
-
-def barplot_annotate_brackets(num1, num2, data, center, height, yerr=None, dh=.05, barh=.05, fs=None, maxasterix=None, ax=None):
-    """
-    Annotate barplot with p-values.
-
-    :param num1: number of left bar to put bracket over
-    :param num2: number of right bar to put bracket over
-    :param data: string to write or number for generating asterixes
-    :param center: centers of all bars (like plt.bar() input)
-    :param height: heights of all bars (like plt.bar() input)
-    :param yerr: yerrs of all bars (like plt.bar() input)
-    :param dh: height offset over bar / bar + yerr in axes coordinates (0 to 1)
-    :param barh: bar height in axes coordinates (0 to 1)
-    :param fs: font size
-    :param maxasterix: maximum number of asterixes to write (for very small p-values)
-    """
-    if ax is None:
-        ax = plt.gca()
-    if type(data) is str:
-        text = data
-    else:
-        # * is p < 0.05
-        # ** is p < 0.005
-        # *** is p < 0.0005
-        # etc.
-        text = ''
-        p = .05
-
-        while data < p:
-            text += '*'
-            p /= 10.
-
-            if maxasterix and len(text) == maxasterix:
-                break
-
-        if len(text) == 0:
-            text = 'n. s.'
-
-    lx, ly = center[num1], height[num1]
-    rx, ry = center[num2], height[num2]
-
-    if yerr:
-        ly += yerr[num1]
-        ry += yerr[num2]
-
-    ax_y0, ax_y1 = plt.gca().get_ylim()
-    dh *= (ax_y1 - ax_y0)
-    barh *= (ax_y1 - ax_y0)
-
-    y = max(ly, ry) + dh
-
-    barx = [lx, lx, rx, rx]
-    bary = [y, y+barh, y+barh, y]
-    mid = ((lx+rx)/2, y+barh)
-
-    ax.plot(barx, bary, c='black')
-
-    kwargs = dict(ha='center', va='bottom')
-    if fs is not None:
-        kwargs['fontsize'] = fs
-
-    ax.text(*mid, text, **kwargs)
 
 
 def from_netname_to_str(str):
@@ -201,30 +137,12 @@ def config_to_path_shape_fam(config):
                 + f'{config.type_ds_args}'
 
 
-#
-# def config_to_path_special_base_comp(config):
-#     return f"special_base_composite/{config.network_name}" \
-#            + '//' \
-#            + f'{config.background}' \
-#            + f'_{config.pretraining}' \
-#            + '//' \
-#            + f'{config.type_ds}' \
-#            + '//'
-
-
 
 def config_to_path_train(config):
     return f"dataset/{config.type_ds}" \
            + '//' \
            + f'{config.network_name}'
 
-def config_to_path_hierarchical_multisaccades(config, tmp_tags=None):
-    return f"hierarchical_multisaccades/{config.network_name}" \
-           + '//' \
-           + f'{config.background}' \
-           + f'_{config.pretraining}' \
-           + (f'_{tmp_tags}' if tmp_tags else '') \
-           + '//'
 
 
 def config_to_path_hierarchical(config, tmp_tags=None):
@@ -235,22 +153,13 @@ def config_to_path_hierarchical(config, tmp_tags=None):
            + (f'_{tmp_tags}' if tmp_tags else '') \
            + '//'
 
-def config_to_path_subhierarchical(config):
-    return f"hierarchical/{config.network_name}" \
-           + '//' \
-           + f'{config.background}' \
-           + f'_{config.pretraining}' \
-           + f'//{"+".join(config.type_ds)}_'
 
 
 class MyGrabNet(GrabNet):
     @staticmethod
     def get_other_nets(network_name, imagenet_pt, **kwargs):
         net = None
-        if network_name == 'ViT':
-            timm.list_models(pretrained=True)
-            net = timm.create_model('vit_base_patch16_224', pretrained=True)
-        elif network_name == 'cornet-rt':
+        if network_name == 'cornet-rt':
             net = cornet.cornet_rt(pretrained=True, map_location='cpu', times=5)
         elif network_name == 'cornet-s':
             net = cornet.cornet_s(pretrained=True, map_location='cpu')
@@ -291,6 +200,5 @@ class RandomPixels(torch.nn.Module):
         s_line = len(i[i == [1000, 1000, 1000]])
         i[i == [1000, 1000, 1000]] = np.repeat([0, 0, 0], s_line / 3, axis=0).flatten()
         i = i.astype(np.uint8)
-        # plt.imshow(i)
 
         return transforms.ToPILImage()(i)

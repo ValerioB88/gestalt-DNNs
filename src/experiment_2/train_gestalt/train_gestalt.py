@@ -10,14 +10,14 @@ from src.utils.misc import *
 from itertools import product
 from torchvision.transforms import transforms
 
-def train(type_ds, network_name):
+def train(type_ds, network_name, pt):
     config = Config(stop_when_train_acc_is=95,
                     patience_stagnation=500,
                     project_name='Train-Gestalt',
                     network_name=network_name,
                     batch_size=8 if not torch.cuda.is_available() else 64,
-                    weblogger=False,
-                    pretraining='ImageNet',  # get_model_path(config, resume=True)
+                    weblogger=False,  #set to "2" if you want to log into neptune client
+                    pretraining=pt,
                     learning_rate=0.0005,
                     clip_max_norm=None,
                     type_ds=type_ds,
@@ -43,13 +43,22 @@ def train(type_ds, network_name):
     config.loss_fn = torch.nn.CrossEntropyLoss()
     config.optimizer = torch.optim.Adam(config.net.parameters(),
                                         lr=config.learning_rate)
+    if config.pretraining == 'ImageNet':
+        if 'vonenet' in config.network_name:
+            stats = {'mean': [0.5, 0.5, 0.5], 'std':  [0.5, 0.5, 0.5]}
+        else:
+            stats = {'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225]}
+    else:
+        stats = None
 
-    train_dataset = add_compute_stats(MyImageFolder)(root=f'./data/learning_EFs_dataset/{config.type_ds}/train', name_generator='train', add_PIL_transforms=pil_t)
+    train_dataset = add_compute_stats(MyImageFolder)(root=f'./data/learning_EFs_dataset/{config.type_ds}/train', name_generator='train', add_PIL_transforms=pil_t, stats=stats)
+
     train_loader = DataLoader(train_dataset, shuffle=True, batch_size=config.batch_size,
                               num_workers=8 if config.use_cuda and not config.is_pycharm else 0,
                               timeout=0 if config.use_cuda and not config.is_pycharm else 0)
 
-    test_dataset = add_compute_stats(MyImageFolder)(root=f'./data/learning_EFs_dataset/{config.type_ds}/test', name_generator='test', add_PIL_transforms=pil_t)
+    test_dataset = add_compute_stats(MyImageFolder)(root=f'./data/learning_EFs_dataset/{config.type_ds}/test', name_generator='test', add_PIL_transforms=pil_t, stats=train_dataset.stats)
+
     test_loaders = [DataLoader(test_dataset, shuffle=True, batch_size=config.batch_size,
                                num_workers=8 if config.use_cuda and not config.is_pycharm else 0,
                                timeout=0 if config.use_cuda and not config.is_pycharm else 0)]
@@ -82,16 +91,20 @@ def train(type_ds, network_name):
         StopFromUserInput(),
         ProgressBar(l=len(train_loader), batch_size=config.batch_size, logs_keys=['ema_loss', 'ema_acc']),
 
-        TriggerActionWhenReachingValue(mode='max', patience=20, value_to_reach=0.90, check_every=10, metric_name='ema_acc', action=stop, action_name='goal90%'),
+        # Either train for 10 epochs (which is more than enough for convergence):
+        TriggerActionWhenReachingValue(mode='max', patience=1, value_to_reach=10, check_every=10, metric_name='epoch', action=stop, action_name='10epochs'),
 
-        TriggerActionWithPatience(mode='min', min_delta=0.01,
-                                  patience=config.patience_stagnation,
-                                  min_delta_is_percentage=False,
-                                  metric_name='ema_loss',
-                                  check_every=10,
-                                  triggered_action=stop,
-                                  action_name='Early Stopping',
-                                  weblogger=config.weblogger),
+        # Or explicitely traing until 90% accuracy or convergence: 
+        # TriggerActionWhenReachingValue(mode='max', patience=20, value_to_reach=0.90, check_every=10, metric_name='ema_acc', action=stop, action_name='goal90%'),
+
+        # TriggerActionWithPatience(mode='min', min_delta=0.01,
+        #                           patience=config.patience_stagnation,
+        #                           min_delta_is_percentage=False,
+        #                           metric_name='ema_loss',
+        #                           check_every=10,
+        #                           triggered_action=stop,
+        #                           action_name='Early Stopping',
+        #                           weblogger=config.weblogger),
 
 
         PlateauLossLrScheduler(config.optimizer, patience=1000, check_batch=True, loss_metric='ema_loss'),
@@ -106,9 +119,11 @@ def train(type_ds, network_name):
     net, logs = call_run(train_loader, True, all_cb)
     config.weblogger.stop()
 
-network_names = ['alexnet', 'vgg16bn', 'vonenet-cornets', 'inception_v3' ]
+network_names = ['alexnet', 'inception_v3', 'densenet201', 'vgg19bn', 'resnet152', 'vonenet-resnet50', 'cornet-s', 'vonenet-cornets']  #
 type_ds = ['proximity', 'linearity', 'orientation']
-all_exps = (product(network_names, type_ds))
+pt = ['ImageNet', 'vanilla']
+all_exps = (product(network_names, type_ds, pt))
 arguments = list((dict(network_name=i[0],
-                       type_ds=i[1]) for i in all_exps))
+                       type_ds=i[1],
+                       pt=i[2]) for i in all_exps))
 [train(**a) for a in arguments]
