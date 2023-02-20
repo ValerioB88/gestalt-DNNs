@@ -7,11 +7,11 @@ class ConstrainedError(Exception):
     pass
 
 class DrawShape():
-    def __init__(self, background='black', img_size=(224, 224), width=None, antialiasing=False, borders=False, line_col=None, size_up_size_down=False, borders_width=None, min_dist_bw_points=0, min_dist_borders=0):
+    def __init__(self, background='black', img_size=(224, 224), width=None, antialiasing=False, borders=False, line_col=None, resize_up_resize_down=False, borders_width=None, min_dist_bw_points=0, min_dist_borders=0):
 
         self.min_dist_bw_points = min_dist_bw_points
         self.min_dist_borders = min_dist_borders
-        self.size_up_size_down = size_up_size_down
+        self.resize_up_resize_down = resize_up_resize_down
         self.antialiasing = antialiasing
         self.borders = borders
         self.background = background
@@ -68,7 +68,7 @@ class DrawShape():
                 return sets, ppsdict
 
             except ConstrainedError:
-                print('Regenerating...')
+                # print('Regenerating...')
                 continue
 
 
@@ -292,7 +292,8 @@ class DrawShape():
             if np.linalg.norm([np.array([x0, y0]) - np.array([x1, y1])]) > self.min_dist_bw_points:
                 repeat = False
             else:
-                print("Repeat min distance pair points")
+                # print("Repeat min distance pair points")
+                pass
 
         return ((x0, y0),), ((x1, y1),)  # img0-> p1 -> (x, y)
 
@@ -642,16 +643,19 @@ class DrawShape():
 
     def resize_up_down(fun):
         def wrap(self, *args, **kwargs):
-            ori_self_width = self.line_args['width']
-            self.line_args['width'] = self.line_args['width'] * 2
-            original_img_size = self.img_size
-            self.img_size = np.array(self.img_size) * 2
+            if self.resize_up_resize_down:
+                ori_self_width = self.line_args['width']
+                self.line_args['width'] = self.line_args['width'] * 2
+                original_img_size = self.img_size
+                self.img_size = np.array(self.img_size) * 2
 
             im1, im2 = fun(self, *args, **kwargs)
-            im1 = im1.resize(original_img_size)
-            im2 = im2.resize(original_img_size)
-            self.line_args['width'] = ori_self_width
-            self.img_size = original_img_size
+
+            if self.resize_up_resize_down:
+                im1 = im1.resize(original_img_size)
+                im2 = im2.resize(original_img_size)
+                self.line_args['width'] = ori_self_width
+                self.img_size = original_img_size
             return im1, im2
         return wrap
 
@@ -1671,9 +1675,9 @@ class DrawShape():
 ##
 
         def add_curly_bracket(self, im):
-            font_path = 'C:/windows/Fonts/calibri.ttf'
+            font_path = './calibri.ttf'
             rot = 0
-            font_size = 265
+            font_size = 135
             cc = self.create_canvas(img_size=sz_fact, borders=False)
             draw = ImageDraw.Draw(cc)
             arial = ImageFont.truetype(font_path, font_size)
@@ -1740,13 +1744,13 @@ class DrawShape():
         cc = self.create_canvas(img_size=sz_fact, borders=False)
         draw = ImageDraw.Draw(cc)
 
-        arial = ImageFont.truetype("C:/windows/Fonts/inkfree.ttf", 190)
-        draw.text((sz_fact[0] / 2, sz_fact[1] / 2), char, font=arial, anchor="mm",  fill=(self.line_col,)*3, stroke_width=5)
+        arial = ImageFont.truetype("./Inkfree.ttf", 80)
+        draw.text((sz_fact[0] / 2, sz_fact[1] / 2), char, font=arial, anchor="mm",  fill=(self.line_col,)*3, stroke_width=3)
         cc = cc.rotate(90, resample=2, center=(sz_fact[0] // 2, sz_fact[1] // 2))
-        im1.paste(cc, (self.img_size[0] // 2 - sz_fact[0] // 2 -5,
-                       self.img_size[1] // 2 - sz_fact[1] // 2 + 110,
-                       self.img_size[0] // 2 - sz_fact[0] // 2 + sz_fact[0] -5,
-                       self.img_size[1] // 2 - sz_fact[1] // 2 + sz_fact[1] + 110))
+        im1.paste(cc, (self.img_size[0] // 2 - sz_fact[0] // 2 - 10,
+                       self.img_size[1] // 2 - sz_fact[1] // 2 + 50,
+                       self.img_size[0] // 2 - sz_fact[0] // 2 + sz_fact[0] - 10,  # - 5,
+                       self.img_size[1] // 2 - sz_fact[1] // 2 + sz_fact[1] + 50))  # + 115))
         draw = ImageDraw.Draw(im1)
 
         ###
@@ -1766,13 +1770,13 @@ class DrawShape():
         cc = self.create_canvas(img_size=sz_fact, borders=False)
         draw = ImageDraw.Draw(cc)
 
-        arial = ImageFont.truetype("C:/windows/Fonts/inkfree.ttf", 190)
-        draw.text((sz_fact[0] / 2, sz_fact[1] / 2), char, font=arial, anchor="mm", fill=(self.line_col,)*3, stroke_width=5)
+        arial = ImageFont.truetype("./Inkfree.ttf", 80)
+        draw.text((sz_fact[0] / 2, sz_fact[1] / 2), char, font=arial, anchor="mm", fill=(self.line_col,)*3, stroke_width=3)
         cc = cc.rotate(90, resample=2, center=(sz_fact[0] // 2, sz_fact[1] // 2))
-        im2.paste(cc, (self.img_size[0] // 2 - sz_fact[0] // 2 - 5 ,
-                       self.img_size[1] // 2 - sz_fact[1] // 2 + 110,
-                       self.img_size[0] // 2 - sz_fact[0] // 2 + sz_fact[0] - 5,
-                       self.img_size[1] // 2 - sz_fact[1] // 2 + sz_fact[1] + 110))
+        im2.paste(cc, (self.img_size[0] // 2 - sz_fact[0] // 2 - 10 ,
+                       self.img_size[1] // 2 - sz_fact[1] // 2 + 50,
+                       self.img_size[0] // 2 - sz_fact[0] // 2 + sz_fact[0] - 10,
+                       self.img_size[1] // 2 - sz_fact[1] // 2 + sz_fact[1] + 50))
         draw = ImageDraw.Draw(im2)
 
         self.draw_line_with_circled_edge(draw, ((self.img_size[0] // 2 - self.img_size[0] // 2 // s,
@@ -1793,8 +1797,8 @@ class DrawShape():
 
     @resize_up_down
     def get_array4_curly(self):
+        ##
         im1 = self.create_canvas()
-        draw = ImageDraw.Draw(im1)
 
         s = 2.5
 
@@ -1803,13 +1807,13 @@ class DrawShape():
         cc = self.create_canvas(img_size=sz_fact, borders=False)
         draw = ImageDraw.Draw(cc)
 
-        arial = ImageFont.truetype("C:/windows/Fonts/inkfree.ttf", 190)
-        draw.text((sz_fact[0] / 2, sz_fact[1] / 2), char, font=arial, anchor="mm",  fill=(self.line_col,)*3, stroke_width=5)
+        arial = ImageFont.truetype("./Inkfree.ttf", 80)
+        draw.text((sz_fact[0] / 2, sz_fact[1] / 2), char, font=arial, anchor="mm",  fill=(self.line_col,)*3, stroke_width=3)
         cc = cc.rotate(90, resample=2, center=(sz_fact[0] // 2, sz_fact[1] // 2))
-        im1.paste(cc, (self.img_size[0] // 2 - sz_fact[0] // 2 -5,
-                       self.img_size[1] // 2 - sz_fact[1] // 2 + 115,
-                       self.img_size[0] // 2 - sz_fact[0] // 2 + sz_fact[0] -5,
-                       self.img_size[1] // 2 - sz_fact[1] // 2 + sz_fact[1] + 115))
+        im1.paste(cc, (self.img_size[0] // 2 - sz_fact[0] // 2 - 10,
+                       self.img_size[1] // 2 - sz_fact[1] // 2 + 50,
+                       self.img_size[0] // 2 - sz_fact[0] // 2 + sz_fact[0] - 10, #- 5,
+                       self.img_size[1] // 2 - sz_fact[1] // 2 + sz_fact[1] + 50)) #+ 115))
         draw = ImageDraw.Draw(im1)
 
         self.draw_line_with_circled_edge(draw, ((self.img_size[0] // 2 - self.img_size[0] // 2 // s,
@@ -1821,19 +1825,20 @@ class DrawShape():
                                                  self.img_size[0] // 2 - self.img_size[0] // 2 // s),
                                                 (self.img_size[0] // 2 + self.img_size[0] // 2 // s - 20,
                                                  self.img_size[0] // 2 + self.img_size[0] // 2 // s - 8 )))
+        ##
         im2 = self.create_canvas()
         char = '{'
         sz_fact = (400, 400)
         cc = self.create_canvas(img_size=sz_fact, borders=False)
         draw = ImageDraw.Draw(cc)
 
-        arial = ImageFont.truetype("C:/windows/Fonts/inkfree.ttf", 190)
-        draw.text((sz_fact[0] / 2, sz_fact[1] / 2), char, font=arial, anchor="mm", fill=(self.line_col,)*3, stroke_width=5)
+        arial = ImageFont.truetype("./Inkfree.ttf", 80)
+        draw.text((sz_fact[0] / 2, sz_fact[1] / 2), char, font=arial, anchor="mm", fill=(self.line_col,)*3, stroke_width=3)
         cc = cc.rotate(90, resample=2, center=(sz_fact[0] // 2, sz_fact[1] // 2))
-        im2.paste(cc, (self.img_size[0] // 2 - sz_fact[0] // 2,
-                       self.img_size[1] // 2 - sz_fact[1] // 2 + 110,
-                       self.img_size[0] // 2 - sz_fact[0] // 2 + sz_fact[0],
-                       self.img_size[1] // 2 - sz_fact[1] // 2 + sz_fact[1] + 110))
+        im2.paste(cc, (self.img_size[0] // 2 - sz_fact[0] // 2 ,
+                       self.img_size[1] // 2 - sz_fact[1] // 2 + 50,
+                       self.img_size[0] // 2 - sz_fact[0] // 2 + sz_fact[0] ,  # - 5,
+                       self.img_size[1] // 2 - sz_fact[1] // 2 + sz_fact[1] + 50))  # + 115))
         draw = ImageDraw.Draw(im2)
 
         self.draw_line_with_circled_edge(draw, ((self.img_size[0] // 2 + self.img_size[0] // 2 // s - 8,
@@ -1843,6 +1848,8 @@ class DrawShape():
         self.draw_line_with_circled_edge(draw, ((self.img_size[0] // 2 - self.img_size[0] // 2 // s ,
                                                  self.img_size[0] // 2 - self.img_size[0] // 2 // s),
                                                 (self.img_size[0] // 2 + self.img_size[0] // 2 // s - 8, self.img_size[0] // 2 + self.img_size[0] // 2 // s)))
+
+        ##
         if self.antialiasing:
             im1 = self.apply_antialiasing(im1)
             im2 = self.apply_antialiasing(im2)

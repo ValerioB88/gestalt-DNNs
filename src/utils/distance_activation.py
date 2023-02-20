@@ -35,6 +35,7 @@ class RecordActivations:
         print(sty.fg.yellow + "Network put in eval mode in Record Activation" + sty.rs.fg)
         all_layers = self.group_all_layers()
         self.hook_lists = []
+        self.hook_lists.append(self.net.register_forward_hook(self.reset_counter()))
         for idx, i in enumerate(all_layers):
             name = '{}: {}'.format(idx, str.split(str(i), '(')[0])
             if np.any([ii in name for ii in self.only_save]):
@@ -42,9 +43,17 @@ class RecordActivations:
                 self.hook_lists.append(i.register_forward_hook(self.get_activation(name)))
         self.last_linear_layer = self.all_layers_name[-1]
 
+    call_counter = 0  # when does this get reset?
+
+    def reset_counter(self):
+        def hook(model, input, output):
+            self.call_counter = 0
+        return hook
+
     def get_activation(self, name):
         def hook(model, input, output):
-                self.activation[name] = (output.detach() if self.detach_tensors else output)
+                self.activation[f'{self.call_counter}:{name}'] = (output.detach() if self.detach_tensors else output)
+                self.call_counter += 1
         return hook
 
     def group_all_layers(self):

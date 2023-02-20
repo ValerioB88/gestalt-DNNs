@@ -11,17 +11,23 @@ import pathlib
 background = 'random'
 dr = DrawShape(background=background, img_size=(224, 224), width=10)
 
-sample = [f'array{i}' for i in range(1, 19)]
-sample.extend(['arrayA', 'arrayB', 'arrayC', 'arrayD', 'arrayE', 'arrayF'])
+sample = []
+# sample = [f'array{i}' for i in range(1, 19)]
+# sample.extend(['arrayA', 'arrayB', 'arrayC', 'arrayD', 'arrayE', 'arrayF'])
 sample.extend(['curly_composite_with_space', 'array4_curly', 'array11_curly'])
 
 folder = f'./data/all_stimuli_exp1/'
 pathlib.Path(folder).mkdir(parents=True, exist_ok=True)
 
+# dr.get_curly_composite_with_space()[1].show()
+dr.get_array4_curly()[1].show()
+dr.get_array11_curly()[0].show()
+dr.get_array11()[0].show()
+
 for s in sample:
     im_pair = dr.__getattribute__(f'get_{s}')()
-    im_pair[0].save(f'{folder}/{s}_0.png')
-    im_pair[0].save(f'{folder}/{s}_1.png')
+    # im_pair[0].save(f'{folder}/{s}_0.png')
+    # im_pair[0].save(f'{folder}/{s}_1.png')
 
 ### Generate Stimuli for Experiment 2. Notice that due to the hierarchical nature of this dataset, each set is produced together.
 background = 'random'

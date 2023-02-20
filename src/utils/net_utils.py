@@ -5,29 +5,31 @@ import torchvision
 import torch.nn as nn
 from sty import fg, ef, rs, bg
 import os
-import src.utils.misc as utils
 
 def get_layer_from_depth_str(all_layers, depth_layer):
     if depth_layer == 'early':
         dd = 1
-    if depth_layer == 'middle_early':
+    elif depth_layer == 'middle_early':
         dd = 2
-    if depth_layer == 'middle':
+    elif depth_layer == 'middle':
         dd = 3
     if np.any([depth_layer == i for i in ['early', 'middle_early', 'middle']]):
         ll = all_layers[int(len(all_layers) / 4 * dd - 1)]
 
-    if depth_layer == 'penultimate_l':
+    elif depth_layer == 'penultimate_l':
         ll = all_layers[-2]
 
-    if depth_layer == 'last_l':
+    elif depth_layer == 'last_l':
         ll = all_layers[-1]
 
-    if depth_layer == 'last_conv_l':
-        ll = all_layers[[idx for idx, i in enumerate(all_layers) if 'Linear' in i][0] - 1]
+    elif depth_layer == 'last_conv_l':
+        ll = all_layers[[idx for idx, i in enumerate(all_layers) if 'Conv' in i][-1]]
 
-    if depth_layer == 'first_linear_l':
+    elif depth_layer == 'first_linear_l':
         ll = all_layers[[idx for idx, i in enumerate(all_layers) if 'Linear' in i][0]]
+
+    else:
+        assert False, f"{depth_layer} not recognized"
     return ll
 
 
@@ -53,7 +55,8 @@ class GrabNet():
         """
         if imagenet_pt:
             print(fg.red + "Loading ImageNet" + rs.fg)
-
+        norm_stats = dict(mean=[0.491, 0.482, 0.447], std=[0.247, 0.243, 0.262])
+        resize = None
         nc = 1000 if imagenet_pt else num_classes
         kwargs = dict(num_classes=nc) if nc is not None else dict()
         if network_name == 'vgg11':
@@ -94,6 +97,7 @@ class GrabNet():
                 net.classifier[-1] = nn.Linear(net.classifier[-1].in_features, num_classes)
         elif network_name == 'inception_v3':  # nope
             net = torchvision.models.inception_v3(pretrained=imagenet_pt, progress=True, **kwargs)
+            resize = 299
             if num_classes is not None:
                 net.fc = nn.Linear(net.fc.in_features, num_classes)
         elif network_name == 'densenet121':
@@ -108,11 +112,54 @@ class GrabNet():
             net = torchvision.models.googlenet(pretrained=imagenet_pt, progress=True, **kwargs)
             if num_classes is not None:
                 net.fc = nn.Linear(net.fc.in_features, num_classes)
+        elif network_name == 'vit_b_16':
+            net = torchvision.models.vit_b_16(pretrained=imagenet_pt, progress=True, **kwargs)
+        elif network_name == 'vit_b_32':
+            net = torchvision.models.vit_b_32(pretrained=imagenet_pt, progress=True, **kwargs)
+        elif network_name == 'vit_l_16':
+            net = torchvision.models.vit_l_16(pretrained=imagenet_pt, progress=True, **kwargs)
+        elif network_name == 'vit_l_32':
+            net = torchvision.models.vit_l_32(pretrained=imagenet_pt, progress=True, **kwargs)
+        elif network_name == 'vit_h_14':
+            net = torchvision.models.vit_h_14(pretrained=imagenet_pt, progress=True, **kwargs)
+        elif 'dino' in network_name:  # can be dino_vits16, dino_vits8, dino_vitb16, dino_vitb8
+            net = torch.hub.load('facebookresearch/dino:main', network_name)
+        elif network_name == 'simCLR_resnet18_stl10':
+            net = torchvision.models.resnet18(pretrained=False, num_classes=10)
+            if imagenet_pt:
+                checkpoint = torch.load('./models/resnet18_stl10_checkp100.pth')
+                state_dict = checkpoint['state_dict']
+
+                for k in list(state_dict.keys()):
+
+                    if k.startswith('backbone.'):
+                        if k.startswith('backbone') and not k.startswith('backbone.fc'):
+                            # remove prefix
+                            state_dict[k[len("backbone."):]] = state_dict[k]
+                    del state_dict[k]
+                log = net.load_state_dict(state_dict, strict=False)
+                assert log.missing_keys == ['fc.weight', 'fc.bias']
+        elif network_name == 'simCLR_resnet50_stl10':
+            net = torchvision.models.resnet18(pretrained=False, num_classes=10)
+            if imagenet_pt:
+                checkpoint = torch.load('./models/resnet50_stl10_checkp50.pth')
+                state_dict = checkpoint['state_dict']
+
+                for k in list(state_dict.keys()):
+
+                    if k.startswith('backbone.'):
+                        if k.startswith('backbone') and not k.startswith('backbone.fc'):
+                            # remove prefix
+                            state_dict[k[len("backbone."):]] = state_dict[k]
+                    del state_dict[k]
+                log = net.load_state_dict(state_dict, strict=False)
+                assert log.missing_keys == ['fc.weight', 'fc.bias']
+
         else:
-            net = cls.get_other_nets(network_name, imagenet_pt, **kwargs)
+            net, norm_stats, resize = cls.get_other_nets(network_name, imagenet_pt, **kwargs)
             assert False if net is False else True, f"Network name {network_name} not recognized"
 
-        return net
+        return net, norm_stats, resize
 
     @staticmethod
     def get_other_nets(network_name, num_classes, imagenet_pt, **kwargs):
@@ -120,8 +167,10 @@ class GrabNet():
 
 
 def prepare_network(net, config, train=True):
-    pretraining_file = 'vanilla' if config.pretraining == 'ImageNet' else config.pretraining
-    net = load_pretraining(net, pretraining_file, config.use_cuda)
+    import src.utils.misc as utils
+
+    if config.pretraining != 'ImageNet':
+        net = load_pretraining(net, config.pretraining, config.use_cuda)
     net.cuda() if config.use_cuda else None
     cudnn.benchmark = True
     net.train() if train else net.eval()
